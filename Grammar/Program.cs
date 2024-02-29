@@ -22,13 +22,20 @@ namespace Lab3
 
 				GrammarOps gr = new GrammarOps(grammar);
 
-				// First step, computes nonterminals that can be rewritten as empty word
+                // First step, computes nonterminals that can be rewritten as empty word
+                Console.WriteLine("EMPTY");
 				foreach (Nonterminal nt in gr.EmptyNonterminals)
 				{
 					Console.Write(nt.Name + " ");
 				}
 				Console.WriteLine();
-			}
+
+                gr.ComputeFirstSets();  // Assume this method is implemented in GrammarOps
+                gr.DisplayFirstSets();  // You need to implement a method to display FIRST sets
+
+                gr.ComputeFollowSets(); // Assume this method is implemented in GrammarOps
+                gr.DisplayFollowSets();
+            }
 			catch (GrammarException e)
 			{
 				Console.WriteLine($"{e.LineNumber}: Error -  {e.Message}");
