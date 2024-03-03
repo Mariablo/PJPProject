@@ -71,9 +71,10 @@ namespace Lab3
                     {
                         if (symbol is Terminal terminal)
                         {
+                            // If a terminal is found, add it to the FIRST set and break, as it cannot lead to epsilon directly
                             if (firstSets[lhs].Add(terminal)) changed = true;
-                            canLeadToEpsilon = false; // Terminal found, cannot lead to epsilon directly
-                            break; // Move to the next rule after finding the first terminal
+                            canLeadToEpsilon = false;
+                            break;
                         }
                         else if (symbol is Nonterminal nt)
                         {
@@ -91,7 +92,7 @@ namespace Lab3
                         }
                     }
 
-                    // If all symbols can lead to epsilon, add epsilon to lhs
+                    // If all symbols can lead to epsilon or the RHS is empty, add epsilon to lhs
                     if (canLeadToEpsilon && rule.RHS.Any())
                     {
                         if (firstSets[lhs].Add(new Terminal("{e}"))) changed = true;
@@ -99,6 +100,7 @@ namespace Lab3
                 }
             } while (changed);
         }
+
 
 
         public void ComputeFollowSets()
@@ -196,56 +198,59 @@ namespace Lab3
             Console.WriteLine("FIRST:");
             foreach (var rule in g.Rules)
             {
-                // Start by assuming we might need to add epsilon if the RHS is empty or leads to epsilon
-                bool canLeadToEpsilon = !rule.RHS.Any();
-
-                var rhsDisplay = new StringBuilder();
-                var firstSetDisplay = new HashSet<string>(); // Use string for easier management of display logic
+                var firstSetDisplay = new HashSet<string>(); // To store unique FIRST symbols for this rule
+                bool canLeadToEpsilon = true;
 
                 foreach (var symbol in rule.RHS)
                 {
-                    rhsDisplay.Append($"{symbol.Name} ");
-
                     if (symbol is Terminal terminal)
                     {
+                        // Directly add terminal and break, as terminals do not lead to epsilon
                         firstSetDisplay.Add(terminal.Name);
-                        canLeadToEpsilon = false; // Found a terminal, so this rule's RHS can't lead directly to epsilon
-                        break; // Stop after the first terminal
+                        canLeadToEpsilon = false;
+                        break;
                     }
                     else if (symbol is Nonterminal nt)
                     {
-                        var ntFirstSet = firstSets[nt];
-                        if (ntFirstSet.Any(t => t.Name != "{e}"))
+                        // Add all FIRST symbols from nt to the display set, except epsilon initially
+                        foreach (var firstSymbol in firstSets[nt])
                         {
-                            // Add all terminal names except epsilon
-                            ntFirstSet.Where(t => t.Name != "{e}").ToList().ForEach(t => firstSetDisplay.Add(t.Name));
+                            if (firstSymbol.Name != "{e}")
+                            {
+                                firstSetDisplay.Add(firstSymbol.Name);
+                            }
+                            else
+                            {
+                                // Only add epsilon if it's the last symbol or if every symbol can lead to epsilon
+                                if (rule.RHS.Last().Equals(symbol))
+                                {
+                                    firstSetDisplay.Add("{e}");
+                                }
+                            }
                         }
-                        if (!ntFirstSet.Any(t => t.Name == "{e}"))
+
+                        // If the current nt cannot lead to epsilon, stop processing further symbols
+                        if (!firstSets[nt].Contains(new Terminal("{e}")))
                         {
-                            // This nonterminal doesn't lead to epsilon, stop adding further symbols
                             canLeadToEpsilon = false;
                             break;
                         }
-                        // If this nonterminal can lead to epsilon, we continue to the next symbol
                     }
                 }
 
-                // Check if we need to add epsilon at the end
-                if (canLeadToEpsilon)
+                // Construct the rule's RHS as a string for display
+                var rhsDisplay = string.Join(" ", rule.RHS.Select(s => s.Name.Replace(" ", "")));
+
+                // If canLeadToEpsilon is still true by the end, it means all symbols can lead to epsilon or it's an epsilon rule directly
+                if (canLeadToEpsilon && !firstSetDisplay.Contains("{e}"))
                 {
                     firstSetDisplay.Add("{e}");
                 }
 
-                // Finalize the RHS display, trimming any trailing whitespace
-                var finalRhsDisplay = rhsDisplay.ToString().Trim();
-                var finalFirstSetDisplay = string.Join(" ", firstSetDisplay);
-
-                // Ensure we don't show an empty RHS
-                var displayRhs = finalRhsDisplay.Length > 0 ? finalRhsDisplay : "";
-                Console.WriteLine($"first[{rule.LHS.Name}:{displayRhs}] = {finalFirstSetDisplay}");
+                // Display the FIRST set for this rule
+                Console.WriteLine($"first[{rule.LHS.Name}:{rhsDisplay}] = {string.Join(" ", firstSetDisplay)}");
             }
         }
-
 
 
         // Method to display the FOLLOW sets
